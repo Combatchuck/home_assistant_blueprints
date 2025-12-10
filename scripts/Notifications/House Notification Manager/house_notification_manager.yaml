@@ -1,0 +1,71 @@
+blueprint:
+  name: House Notification Manager
+  description: >
+    Centralized hub for house-wide announcements.
+    
+    It orchestrates sending TTS to:
+    1. **Standard Speakers** (Always fires).
+    2. **Apple TVs** (Optional, controlled by the `notify_apple_tvs` toggle).
+    
+    **Setup:**
+    You will map your specific speaker groups and the "Worker Scripts" you created in previous steps.
+  domain: script
+  input:
+    speaker_group:
+      name: Standard Speaker Group
+      description: The main group of speakers (e.g., Echo Dots, Sonos) that should always play the announcement.
+      selector:
+        entity:
+          domain: media_player
+    apple_tv_group:
+      name: Apple TV Group
+      description: The group containing all your Apple TVs.
+      selector:
+        entity:
+          domain: media_player
+    script_announcement:
+      name: "Script: Make Announcement"
+      description: Select the 'System - Make Announcement' script you created earlier.
+      selector:
+        entity:
+          domain: script
+    script_apple_tvs:
+      name: "Script: Notify Apple TVs"
+      description: Select the 'System - Notify Apple TVs' script you created earlier.
+      selector:
+        entity:
+          domain: script
+
+fields:
+  message_text:
+    description: The text to speak.
+    required: true
+    selector:
+      text:
+  notify_apple_tvs:
+    description: If true, the message will also be sent to Apple TVs (if they are currently active).
+    default: true
+    selector:
+      boolean:
+
+sequence:
+  - parallel:
+      # 1. Standard Speakers (Always)
+      - action: !input script_announcement
+        data:
+          message: "{{ message_text }}"
+          volume: 0.4
+          target_players: !input speaker_group
+
+      # 2. Apple TVs (Conditional)
+      - if:
+          - condition: template
+            value_template: "{{ notify_apple_tvs }}"
+        then:
+          - action: !input script_apple_tvs
+            data:
+              message: "{{ message_text }}"
+              # Note: We pass the blueprint input group here. 
+              # If your Apple TV script has a default group configured, 
+              # this explicit pass overrides/confirms it for this specific manager.
+              target_override: !input apple_tv_group

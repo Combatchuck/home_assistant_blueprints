@@ -1,0 +1,87 @@
+blueprint:
+  name: Make Announcement
+  description: >
+    Handles the "Snapshot > Volume > Speak > Restore" logic for announcements.
+    
+    1. Creates a snapshot of the target players.
+    2. Sets the volume to a specific level.
+    3. Plays the TTS message.
+    4. Waits for the message to finish (calculated based on text length).
+    5. Restores the players to their previous state (volume/content).
+  domain: script
+  input:
+    default_volume:
+      name: Default Volume
+      description: The volume level (0.0 to 1.0) to use if one isn't provided when calling the script.
+      default: 0.4
+      selector:
+        number:
+          min: 0.0
+          max: 1.0
+          step: 0.05
+    tts_provider:
+      name: TTS Provider
+      description: The TTS service to use (e.g., google_translate, cloud, piper).
+      default: google_translate
+      selector:
+        text:
+
+fields:
+  message:
+    description: The text to speak.
+    required: true
+    selector:
+      text:
+  target_players:
+    description: List of media_players to speak on.
+    required: true
+    selector:
+      entity:
+        domain: media_player
+        multiple: true
+  volume:
+    description: (Optional) Override the volume for this specific announcement.
+    required: false
+    selector:
+      number:
+        min: 0.0
+        max: 1.0
+        step: 0.05
+
+sequence:
+  - variables:
+      # Determine volume: Use field if provided, otherwise blueprint default
+      input_def_vol: !input default_volume
+      final_volume: "{{ volume | default(input_def_vol) }}"
+      provider: !input tts_provider
+
+  # 1. Snapshot current state
+  - action: scene.create
+    data:
+      scene_id: temp_announcement_snapshot
+      snapshot_entities: "{{ target_players }}"
+
+  # 2. Set Volume
+  - action: media_player.volume_set
+    target:
+      entity_id: "{{ target_players }}"
+    data:
+      volume_level: "{{ final_volume }}"
+
+  # 3. Play TTS
+  - action: media_player.play_media
+    target:
+      entity_id: "{{ target_players }}"
+    data:
+      announce: true
+      media_content_id: "media-source://tts/{{ provider }}?message={{ message | urlencode }}&language=en-us"
+      media_content_type: audio/mp3
+
+  # 4. Wait for audio to finish (Rough calculation: chars / 10 + 4 seconds)
+  - delay:
+      seconds: "{{ (message | length / 10) | int + 4 }}"
+
+  # 5. Restore previous state
+  - action: scene.turn_on
+    target:
+      entity_id: scene.temp_announcement_snapshot

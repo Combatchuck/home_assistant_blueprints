@@ -1,0 +1,122 @@
+blueprint:
+  name: Phone Notification Manager
+  description: >
+    Sends notifications to family members with support for Tags, Images, and "Who to Notify" grouping.
+    Logic: Person 1 is HA owner and always notified. Person 2 and 3 are only notified if their Presence entity is 'home'.
+  domain: script
+  input:
+    person_1_notify:
+      name: Person 1 Notification Service
+      description: The notification service for Person 1 (e.g., notify.mobile_app_chucks_iphone). Always notified.
+      selector:
+        text:
+    person_2_notify:
+      name: Person 2 Notification Service
+      description: The notification service for Person 2 (e.g., notify.mobile_app_wife_iphone).
+      selector:
+        text:
+    person_2_tracker:
+      name: Person 2 Presence Entity
+      description: The person entity to check if home (e.g., person.wife).
+      selector:
+        entity:
+          domain: person
+    person_3_notify:
+      name: Person 3 Notification Service
+      description: The notification service for Person 3 (e.g., notify.mobile_app_childs_iphone).
+      selector:
+        text:
+    person_3_tracker:
+      name: Person 3 Presence Entity
+      description: The person entity to check if home (e.g., person.child).
+      selector:
+        entity:
+          domain: person
+
+mode: parallel
+
+sequence:
+  - parallel:
+      # Person 1 Handling (Always Notified if selected)
+      - if:
+          - condition: template
+            value_template: "{{ who_to_notify in ['Person 1', 'Person 1/Person 2', 'Person 1/Person 3', 'All'] }}"
+        then:
+          - action: !input person_1_notify
+            data:
+              message: "{{ message }}"
+              title: "{{ title }}"
+              data:
+                tag: "{{ tag }}"
+                image: "{{ image_path }}"
+
+      # Person 2 Handling (Only if Home)
+      - if:
+          - condition: template
+            value_template: "{{ who_to_notify in ['Person 2', 'Person 1/Person 2', 'Person 2/Person 3', 'All'] }}"
+          - condition: state
+            entity_id: !input person_2_tracker
+            state: home
+        then:
+          - action: !input person_2_notify
+            data:
+              message: "{{ message }}"
+              title: "{{ title }}"
+              data:
+                tag: "{{ tag }}"
+                image: "{{ image_path }}"
+
+      # Person 3 Handling (Only if Home)
+      - if:
+          - condition: template
+            value_template: "{{ who_to_notify in ['Person 3', 'Person 1/Person 3', 'Person 2/Person 3', 'All'] }}"
+          - condition: state
+            entity_id: !input person_3_tracker
+            state: home
+        then:
+          - action: !input person_3_notify
+            data:
+              message: "{{ message }}"
+              title: "{{ title }}"
+              data:
+                tag: "{{ tag }}"
+                image: "{{ image_path }}"
+
+fields:
+  title:
+    selector:
+      text:
+    name: Title
+    required: true
+  message:
+    selector:
+      text:
+    name: Message
+    required: true
+  who_to_notify:
+    selector:
+      select:
+        options:
+          - Person 1/Person 2
+          - Person 1/Person 3
+          - Person 2/Person 3
+          - All
+          - Person 1
+          - Person 2
+          - Person 3
+        mode: dropdown
+    name: Who to Notify
+    default: Person 1/Person 2
+    required: true
+  tag:
+    name: Notification Tag
+    description: Unique ID. Reusing this tag overwrites the previous notification.
+    required: false
+    selector:
+      text:
+  image_path:
+    name: Image Path
+    description: File path or URL to attach to the notification (should be in www/local if you want to access pics out of home)
+    required: false
+    selector:
+      text:

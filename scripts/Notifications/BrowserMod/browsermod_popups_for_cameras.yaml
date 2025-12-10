@@ -1,0 +1,56 @@
+blueprint:
+  name: Tablet Popup
+  description: >
+    Displays a camera popup on specific wall-mounted tablets using Browser Mod.
+    
+    **Configuration:**
+    You must provide the list of **Browser IDs** (found in Browser Mod settings) that should receive the popup.
+  domain: script
+  input:
+    target_browser_ids:
+      name: Target Browser IDs
+      description: >
+        A list of Browser IDs to display the popup on.
+        Format must be a list:
+        - browser_id_1
+        - browser_id_2
+      selector:
+        object:
+    popup_timeout:
+      name: Popup Timeout (ms)
+      description: How long the popup stays open in milliseconds (Default 11000ms = 11s).
+      default: 11000
+      selector:
+        number:
+          min: 1000
+          max: 60000
+          step: 1000
+          mode: box
+
+fields:
+  title_text:
+    description: The title of the popup (e.g., "Front Door Motion")
+    required: true
+    selector:
+      text:
+  camera_entity:
+    description: The camera entity ID to display
+    required: true
+    selector:
+      entity:
+        domain: camera
+
+sequence:
+  - action: browser_mod.popup
+    data:
+      dismissable: true
+      autoclose: false
+      title: '{{ title_text }}'
+      timeout: !input popup_timeout
+      browser_id: !input target_browser_ids
+      content:
+        type: picture-glance
+        camera_view: auto
+        entities: []
+        camera_image: '{{ camera_entity }}'
+      initial_style: wide

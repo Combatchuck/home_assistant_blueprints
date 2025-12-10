@@ -1,0 +1,66 @@
+blueprint:
+  name: Apple TV Notify
+  description: >
+    Sends a TTS notification to Apple TVs.
+    
+    **Smart Filtering:**
+    This script checks the state of the Apple TVs before sending. It will **ONLY** send audio to devices that are currently **On, Playing, Paused, or Buffering**. It silently skips any TV that is Off or in Standby to avoid waking up the house unnecessarily.
+
+    **Setup:**
+    For the "Default Apple TVs" input below, please select the **Helper Group** that contains **ALL** your Apple TV entities.
+  domain: script
+  input:
+    default_apple_tvs:
+      name: Default Apple TVs (Helper Group)
+      description: The group (or list of entities) to check by default.
+      selector:
+        entity:
+          domain: media_player
+          multiple: true
+
+fields:
+  message:
+    description: The text message to announce.
+    example: "Dinner is ready!"
+    required: true
+    selector:
+      text:
+  target_override:
+    description: (Optional) Specific Apple TVs to target for this specific announcement. If left empty, the "Default Apple TVs" group configured in the blueprint will be used.
+    required: false
+    selector:
+      entity:
+        domain: media_player
+        multiple: true
+
+sequence:
+  - variables:
+      # Bind the blueprint input to a variable so we can use it in the template
+      default_entities: !input default_apple_tvs
+      
+      # Determine which entities to check: The override (if provided) or the default group
+      entities_to_check: >
+        {{ target_override if target_override is defined and target_override is not none and target_override != [] else default_entities }}
+      
+      # Filter the list: Only keep devices that are Active
+      active_targets: >
+        {{ expand(entities_to_check)
+           | selectattr('state', 'in', ['playing', 'paused', 'on', 'buffering'])
+           | map(attribute='entity_id')
+           | list }}
+
+  - if:
+      - condition: template
+        value_template: "{{ active_targets | count > 0 }}"
+    then:
+      - action: media_player.play_media
+        target:
+          entity_id: "{{ active_targets }}"
+        data:
+          metadata:
+            title: "{{ message }}"
+            thumbnail: https://brands.home-assistant.io/_/google_translate/logo.png
+            media_class: app
+          media:
+            media_content_id: "media-source://tts/google_translate?message={{ message | replace(' ', '+') }}&language=en-us"
+            media_content_type: audio/mp3
