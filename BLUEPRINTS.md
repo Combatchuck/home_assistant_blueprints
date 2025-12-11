@@ -14,7 +14,7 @@ These blueprints go beyond simple automations by introducing **state awareness**
 
 | Category | File | Description | Type |
 | :--- | :--- | :--- | :--- |
-| **👁️ AI Vision** | `camera_event_manager.yaml` | **The Core Engine.** Unifies snapshots, AI analysis, and multi-target notifications. | Automation |
+| **👁️ AI Vision** | `camera_event_manager.yaml` | **The Core Engine.** Unifies snapshots, AI analysis, and multi-target notifications. | Script |
 | **📲 Routing** | `phone_notification_manager.yaml` | Routes notifications to specific people based on presence (Home/Away). | Script |
 | **🏠 Orchestrator** | `house_notification_manager.yaml` | Central hub that routes TTS to Standard Speakers vs Apple TVs. | Script |
 | **🔊 Audio** | `make_announcement.yaml` | Robust TTS announcements with volume ducking and state restoration. | Script |
