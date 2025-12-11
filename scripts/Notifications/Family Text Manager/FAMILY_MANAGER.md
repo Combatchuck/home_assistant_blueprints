@@ -65,3 +65,21 @@ data:
   title: "Laundry Room"
   message: "The Washing Machine has finished."
   who_to_notify: "All"
+```
+Example 2: Security Alert (With Image)
+
+Sends a high-priority alert with a camera snapshot.
+```YAML
+action: script.phone_notification_manager
+data:
+  title: "⚠️ Motion Detected"
+  message: "Movement detected in the backyard."
+  who_to_notify: "Person 1/Person 2"
+  image_path: "/local/snapshots/backyard_latest.jpg"
+  tag: "backyard-motion"
+```
+⚠️ Requirements<br>
+
+External Image Access If you attach an image using image_path, your Home Assistant instance must be accessible externally (via Nabu Casa or distinct URL) for the image to load on a phone that is not on your WiFi.
+
+If you use local paths (e.g., /local/img.jpg), ensure your mobile app is configured correctly to resolve internal URLs.
