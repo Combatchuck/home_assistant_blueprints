@@ -55,3 +55,23 @@ data:
   target_players:
     - media_player.kitchen_sonos
     - media_player.living_room_echo
+```
+
+Example 2: High-Priority Alarm
+
+Overrides the volume to 90% to ensure it is heard over loud music or TV.
+
+```YAML
+action: script.make_announcement
+data:
+  message: "WARNING: Water leak detected in the basement."
+  target_players: media_player.whole_house_audio
+  volume: 0.9
+```
+
+⚠️ Notes & Limitations
+Wait Calculation: The script estimates the spoken duration using the formula: (Character Count / 10) + 4 seconds. This is a general approximation. 
+<br>
+Very slow speech rates might get cut off, while very fast speech might leave a few seconds of silence before music resumes.
+<br> <br> <br>
+Scene Overwrite: This script uses a temporary scene ID scene.temp_announcement_snapshot. If multiple announcements fire exactly at the same time, they might overwrite each other's snapshot.
