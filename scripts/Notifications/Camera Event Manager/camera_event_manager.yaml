@@ -1,0 +1,273 @@
+blueprint:
+  name: Camera Event Manager
+  description: >
+    Unified Camera Handler.
+    
+    **Workflow:**
+    1. Takes snapshots to `/media/llmvision/snapshots/` and `/config/www/images/llmvision/`.
+    2. Sends "Analyzing..." notification.
+    3. Generates AI description.
+    4. Distributes the result (Popup, Phone, Audio, Apple TV).
+    5. Saves to LLM Memory.
+
+    **⚠️ CRITICAL SETUP REQUIRED:**
+    Because LLM Vision requires specific paths, this blueprint forces snapshots to the folders listed above.
+    You **MUST** ensure these folders exist and are allowed in your `configuration.yaml`:
+    
+    ```yaml
+    homeassistant:
+      allowlist_external_dirs:
+        - "/config/www/images/llmvision"
+        - "/media/llmvision/snapshots"
+    ```
+    You must also set-up the "Helper Scripts" below, as they are named
+
+  domain: script
+  input:
+    # --- Helper Scripts ---
+    script_phone_notify:
+      name: "Script: Phone Notification Manager"
+      description: The script used to send mobile notifications.
+      selector:
+        entity:
+          domain: script
+    script_tablet_popup:
+      name: "Script: Tablet Popup"
+      description: The script used to display camera popups on tablets.
+      selector:
+        entity:
+          domain: script
+    script_audio_announce:
+      name: "Script: Make Announcement"
+      description: The script used for audio announcements on standard speakers.
+      selector:
+        entity:
+          domain: script
+    script_appletv_notify:
+      name: "Script: Apple TV Notify"
+      description: The script used for Apple TV announcements.
+      selector:
+        entity:
+          domain: script
+    
+    # --- Configuration ---
+    default_ai_model:
+      name: Default AI Model
+      description: The AI entity to use for analysis (e.g., ai_task.gemini_flash).
+      selector:
+        entity:
+          domain: ai_task
+    base_url:
+      name: Base URL for Images
+      description: The public/local URL base for accessing images from your phone (e.g., https://ha.yourdomain.com/local/images/llmvision).
+      default: https://ha.<domain>/local/images/llmvision
+      selector:
+        text:
+
+fields:
+  camera_entity:
+    name: Camera Entity
+    required: true
+    selector:
+      entity:
+        domain: camera
+  title_prefix:
+    name: Title / Event Name
+    required: true
+    selector:
+      text:
+  prompt:
+    name: AI Instructions
+    required: false
+    default: Describe the image in detail. (Under 160 characters).
+    selector:
+      text:
+        multiline: true
+  notification_tag:
+    name: Notification Tag
+    description: Unique tag for mobile notifications.
+    required: false
+    selector:
+      text:
+  who_to_notify:
+    name: Who to Notify
+    description: Must match the options in your Phone Notification Manager.
+    default: Person 1
+    selector:
+      text:
+  enable_ai:
+    name: Enable AI Analysis
+    default: true
+    selector:
+      boolean:
+  ai_model:
+    name: AI Model (Override)
+    description: Leave empty to use the Blueprint Default.
+    required: false
+    selector:
+      entity:
+        domain: ai_task
+  enable_popup:
+    name: Enable Tablet Popup
+    default: true
+    selector:
+      boolean:
+  enable_notification:
+    name: Enable Phone Notification
+    default: true
+    selector:
+      boolean:
+  enable_tts:
+    name: Enable Audio Announcement
+    default: false
+    selector:
+      boolean:
+  enable_appletv:
+    name: Enable Apple TV Notification
+    default: false
+    selector:
+      boolean:
+  enable_memory:
+    name: Enable LLM Memory
+    default: true
+    selector:
+      boolean:
+  tts_override:
+    name: TTS Override Message
+    description: If provided, this specific text will be spoken instead of the AI summary.
+    required: false
+    selector:
+      text:
+
+sequence:
+  - variables:
+      # --- PATHS (HARDCODED FOR COMPATIBILITY) ---
+      filename: "{{ title_prefix | slugify }}_{{ now().strftime('%Y%m%d_%H%M%S') }}.jpg"
+      path_media: "/media/llmvision/snapshots/{{ filename }}"
+      path_www: "/config/www/images/llmvision/{{ filename }}"
+      
+      # --- Construct External URL ---
+      input_base_url: !input base_url
+      url_external: "{{ input_base_url }}/{{ filename }}"
+      
+      # --- Defaults ---
+      default_message: "Motion detected at {{ title_prefix }}"
+      event_summary: '{{ default_message }}'
+      input_ai_default: !input default_ai_model
+      final_ai_model: "{{ ai_model | default(input_ai_default) }}"
+
+  # 1. Take Snapshots (Forced Paths)
+  - action: camera.snapshot
+    continue_on_error: true
+    target:
+      entity_id: '{{ camera_entity }}'
+    data:
+      filename: '{{ path_media }}'
+  - action: camera.snapshot
+    continue_on_error: true
+    target:
+      entity_id: '{{ camera_entity }}'
+    data:
+      filename: '{{ path_www }}'
+
+  # 2. Initial Notification ("Analyzing...")
+  - if:
+      - condition: template
+        value_template: '{{ enable_notification and notification_tag is defined and notification_tag != "" }}'
+    then:
+      - action: !input script_phone_notify
+        data:
+          who_to_notify: '{{ who_to_notify }}'
+          title: '{{ title_prefix }}'
+          message: Motion Detected. Analyzing...
+          tag: '{{ notification_tag }}'
+          image_path: '{{ url_external }}'
+
+  # 3. AI Analysis
+  - if:
+      - condition: template
+        value_template: '{{ enable_ai }}'
+    then:
+      - action: ai_task.generate_data
+        response_variable: ai_response
+        continue_on_error: true
+        data:
+          task_name: '{{ title_prefix }}'
+          instructions: '{{ prompt }}'
+          entity_id: '{{ final_ai_model }}'
+          structure:
+            summary:
+              description: Summary of the scene.
+              selector:
+                text: {}
+          attachments:
+            media_content_id: "media-source://camera/{{ camera_entity }}"
+            media_content_type: application/vnd.apple.mpegurl
+            metadata:
+              title: '{{ title_prefix }}'
+              thumbnail: "/api/camera_proxy/{{ camera_entity }}"
+              media_class: video
+      
+      - if:
+          - condition: template
+            value_template: '{{ ai_response.data.summary is defined and ai_response.data.summary | length > 0 }}'
+        then:
+          - variables:
+              event_summary: '{{ ai_response.data.summary }}'
+
+  # 4. Tablet Popup
+  - if:
+      - condition: template
+        value_template: '{{ enable_popup }}'
+    then:
+      - action: !input script_tablet_popup
+        data:
+          title_text: '{{ event_summary }}'
+          camera_entity: '{{ camera_entity }}'
+
+  # 5. Final Mobile Notification
+  - if:
+      - condition: template
+        value_template: '{{ enable_notification }}'
+    then:
+      - action: !input script_phone_notify
+        metadata: {}
+        data:
+          who_to_notify: '{{ who_to_notify }}'
+          title: '{{ title_prefix }}'
+          message: '{{ event_summary }}'
+          tag: '{{ notification_tag | default("") }}'
+          image_path: '{{ url_external }}'
+
+  # 6. Audio Announcement
+  - if:
+      - condition: template
+        value_template: '{{ enable_tts }}'
+    then:
+      - action: !input script_audio_announce
+        data:
+          message: '{{ tts_override | default(event_summary) }}'
+          volume: 0.4
+          target_players:
+            - media_player.alert_notifications_group
+
+  # 7. Apple TV Notification
+  - if:
+      - condition: template
+        value_template: '{{ enable_appletv }}'
+    then:
+      - action: !input script_appletv_notify
+        data:
+          message: '{{ event_summary }}'
+
+  # 8. LLM Memory
+  - if:
+      - condition: template
+        value_template: '{{ enable_memory and (event_summary != default_message) }}'
+    then:
+      - action: llmvision.remember
+        continue_on_error: true
+        data:
+          title: '{{ title_prefix }} Event'
+          summary: '{{ event_summary }}'
+          image_path: '{{ path_media }}'
