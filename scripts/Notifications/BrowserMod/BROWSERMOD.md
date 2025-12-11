@@ -27,3 +27,31 @@ Because this uses the `object` selector, ensure you enter the IDs as a list:
 ```yaml
 - 78245-tablet-kitchen
 - 99281-tablet-hallway
+```
+
+2. Runtime Fields (Automation)
+
+When calling this script in an automation, you must provide the context for the specific event.
+
+Title Text: The header displayed on the popup (e.g., "Driveway Motion").
+
+Camera Entity: The specific camera. entity you want to stream.
+
+📝 Usage Example
+Here is a standard automation example: "When the doorbell is pressed, show the camera on the kitchen tablet."
+
+```YAML
+trigger:
+  - platform: state
+    entity_id: binary_sensor.front_doorbell_ring
+    to: "on"
+action:
+  - action: script.tablet_popup
+    data:
+      title_text: "Front Door - Ringing!"
+      camera_entity: camera.front_door_high_res
+```
+🔎 Technical Details
+Card Type: Uses a standard picture-glance card inside the popup for minimal latency.
+
+Auto-Close: The popup is configured to allow the user to close it manually (dismissable: true), but will also close automatically after the configured timeout.
