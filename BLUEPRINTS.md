@@ -4,68 +4,63 @@
 ![Language](https://img.shields.io/badge/Language-YAML-red?style=for-the-badge)
 ![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg?style=for-the-badge)
 
-This repository contains custom blueprints designed to standardize **advanced notifications**, **AI vision handling**, and **media player control** across the home ecosystem.
+A collection of advanced, logic-heavy blueprints designed to standardize **AI vision handling**, **smart notifications**, and **media player control** across the Home Assistant ecosystem.
+
+These blueprints go beyond simple automations by introducing **state awareness** (smart filtering), **AI integration** (Gemini/Ollama), and **hardware-specific features** (Browser Mod/Apple TV).
 
 ---
 
-## 👁️ 1. Camera Event Manager (AI Vision)
+## 📂 Blueprint Catalog
 
-**File:** `camera_event_manager.yaml`
-
-The core engine for the home's security system. It unifies snapshot generation, AI analysis, and multi-channel notifications into a single, cohesive workflow.
-
-### Capabilities
-* **Dual-Path Snapshots:** Saves images to `/media/llmvision/snapshots/` (for HA history/timeline) and `/config/www/` (for mobile notifications).
-* **AI Integration:** Sends images to `ai_task` entities (e.g., Gemini, Ollama) to generate natural language descriptions of events.
-* **Multi-Target Notification:** Simultaneously notifies Phones, Wall Tablets (Popup), Standard Speakers (TTS), and Apple TVs.
-* **LLM Memory:** Stores significant events into a memory database to provide future context for AI agents.
-
-> [!WARNING]
-> **Configuration Requirement**
-> Your `configuration.yaml` must allow external access (whitelist) to the snapshot directories defined in this blueprint for notifications to display images correctly.
-
-  allowlist_external_dirs:
-    - /config/www/images
-    - /media/llmvision/snapshots
+| Category | File | Description | Type |
+| :--- | :--- | :--- | :--- |
+| **👁️ AI Vision** | `camera_event_manager.yaml` | **The Core Engine.** Unifies snapshots, AI analysis, and multi-target notifications. | Automation |
+| **📲 Routing** | `phone_notification_manager.yaml` | Routes notifications to specific people based on presence (Home/Away). | Script |
+| **🏠 Orchestrator** | `house_notification_manager.yaml` | Central hub that routes TTS to Standard Speakers vs Apple TVs. | Script |
+| **🔊 Audio** | `make_announcement.yaml` | Robust TTS announcements with volume ducking and state restoration. | Script |
+| **📺 Apple TV** | `apple_tv_notify.yaml` | Sends TTS to Apple TVs only if they are active (skips sleeping devices). | Script |
+| **📱 Dashboard** | `tablet_popup.yaml` | Forces a camera popup on wall tablets using Browser Mod. | Script |
 
 ---
 
-## 📲 2. Notification Managers
+## 🚀 Key Features
 
-**Files:** `family_notification_manager.yaml`, `house_notification_manager.yaml`, `notify_apple_tvs.yaml`
+### 1. 👁️ Camera Event Manager (AI Vision)
+* **Dual-Path Snapshots:** Saves high-res images to local storage for history *and* `www` for mobile notifications.
+* **Generative AI:** Feeds snapshots to AI agents (Gemini/Ollama) to generate natural language descriptions of the event.
+* **Context Memory:** Logs events to a database to give the AI long-term memory of home activity.
 
-A routed notification system that ensures the right person gets the message based on presence and device status.
+### 2. 📺 Smart Media Filtering
+Stop waking up the house with announcements.
+* **Apple TV Notify:** Checks if the Apple TV is `playing`, `paused`, or `on`. If the device is `off` or `sleeping`, the announcement is silently skipped.
+* **Audio Ducking:** Announcements snapshot the current volume, lower the media, speak the text, and then restore the previous volume and content perfectly.
 
-### 👤 Phone Notification Manager
-Handles logic for delivering notifications to mobile devices.
-* **Person 1 (Charles):** Always notified regardless of location.
-* **Persons 2 & 3 (Petra/Ethan):** Only notified if their `person` entity status is `home`.
-* **Features:** Supports actionable tags and rich image attachments.
-
-### 🏠 House Notification Manager
-Broadcasts TTS (Text-to-Speech) announcements across the home audio system.
-* **Standard Speakers:** Always announce.
-* **Apple TVs:** Conditionally announce based on the logic below.
-
-### 📺 Apple TV Notify
-Smart filtering to prevent interruptions during quiet times or when the TV is off.
-| State | Action |
-| :--- | :--- |
-| **On / Playing** | ✅ Announce |
-| **Paused / Buffering** | ✅ Announce |
-| **Off / Sleeping** | ❌ Silent |
-
-I recommend creating a helper group with all of your appl tv containied within, then targeting that.
+### 3. 📱 Dashboard Integration
+* **Tablet Popups:** Leverages **Browser Mod** to create immediate visual interruptions on wall-mounted dashboards when critical events (like a doorbell ring) occur.
 
 ---
 
-## 📟 3. Tablet & Media Control
+## 📥 Installation
 
-**Files:** `browsermod_popups_for_cameras.yaml`, `notify_media_players.yaml`
+There are two ways to import these blueprints into your Home Assistant instance:
 
-### Tablet Popup
-Leverages `browser_mod` to force a live camera feed popup on specific wall-mounted dashboard tablets immediately when motion is detected.
+### Option A: Direct Import (Button)
+1. Copy the URL of the specific YAML file in this repository.
+2. Go to **Settings** → **Automations & Scenes** → **Blueprints**.
+3. Click **Import Blueprint** and paste the URL.
 
-### Make Announcement (Robust TTS)
-A smart script that handles audio ducking and state restoration to ensure announcements are heard without ruining the media experience.
-1. **Snapshot:** Records
+### Option B: Manual Installation
+1. Download the `.yaml` files from this repository.
+2. Upload them to your Home Assistant `config/blueprints/automation/` (for automations) or `config/blueprints/script/` (for scripts) folder.
+3. Reload Automations in Developer Tools.
+
+---
+
+## ⚠️ Dependencies & Requirements
+
+> [!IMPORTANT]
+> Some blueprints require specific integrations to function correctly.
+
+* **Browser Mod:** Required for `tablet_popup.yaml`. You must have the integration installed via HACS and your tablet IDs registered.
+* **External Access:** For notification images to load on mobile devices outside your network, your `www` folder must be accessible via your external URL.
+* **Apple TV Integration:** The notification scripts rely on the official Apple TV integration for state detection.
