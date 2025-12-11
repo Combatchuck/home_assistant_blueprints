@@ -45,7 +45,7 @@ sequence:
       # Filter the list: Only keep devices that are Active
       active_targets: >
         {{ expand(entities_to_check)
-           | selectattr('state', 'in', ['playing', 'paused', 'on', 'buffering'])
+           | selectattr('state', 'in', ['playing', 'paused', 'on', 'buffering', 'idle']) 
            | map(attribute='entity_id')
            | list }}
 
