@@ -57,21 +57,24 @@ data:
     - media_player.living_room_echo
 ```
 
-Example 2: High-Priority Alarm
-
+### Example 2: High-Priority Alarm
 Overrides the volume to 90% to ensure it is heard over loud music or TV.
 
-```YAML
+```yaml
 action: script.make_announcement
 data:
   message: "WARNING: Water leak detected in the basement."
-  target_players: media_player.whole_house_audio
+  target_players: 
+    - media_player.whole_house_audio
   volume: 0.9
 ```
 
-⚠️ Notes & Limitations
-Wait Calculation: The script estimates the spoken duration using the formula: (Character Count / 10) + 4 seconds. This is a general approximation. 
-<br>
-Very slow speech rates might get cut off, while very fast speech might leave a few seconds of silence before music resumes.
-<br> <br> <br>
-Scene Overwrite: This script uses a temporary scene ID scene.temp_announcement_snapshot. If multiple announcements fire exactly at the same time, they might overwrite each other's snapshot.
+---
+
+> [!NOTE]
+> **Wait Calculation**
+> The script estimates the spoken duration of the message to know when to restore the original media. The formula is roughly `(Character Count / 10) + 4 seconds`. This is a general approximation. Very slow TTS engines might get cut off, while very fast ones might leave a few seconds of silence before music resumes.
+
+> [!WARNING]
+> **Scene Overwrite Risk**
+> This script creates a temporary scene named `scene.temp_announcement_snapshot`. If multiple announcements are fired at the exact same time from different automations, they could potentially overwrite each other's snapshots, leading to an incorrect state restoration. This is a rare edge case in most households.

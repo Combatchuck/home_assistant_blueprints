@@ -16,70 +16,65 @@ This blueprint divides users into two categories: the **Primary User** (e.g., th
 
 ---
 
-## ⚙️ Configuration (One-Time Setup)
+## ⚙️ Configuration (Blueprint Inputs)
 
 When importing this blueprint, you will map your family members to the logic slots.
 
-### 1. Notification Services
-The blueprint asks for the **Service Name** (not the entity).
-* *Format:* `notify.mobile_app_your_phone_name`
-* *Where to find it:* Go to **Developer Tools** → **Services** and search for "notify".
+> [!TIP]
+> The blueprint asks for the **Notification Service Name** (e.g., `notify.mobile_app_your_phone_name`). You can find this in **Developer Tools** → **Services**.
 
-### 2. Presence Entities
-For Persons 2 and 3, you must select their `person.` entity (e.g., `person.wife`, `person.child`). This is used to check if they are `home`.
+| Input | Description | Example |
+| :--- | :--- | :--- |
+| **Person 1 Notify** | The notification service for the Primary User. | `notify.mobile_app_chucks_iphone` |
+| **Person 2 Notify** | The notification service for Family Member 2. | `notify.mobile_app_wife_iphone` |
+| **Person 2 Tracker** | The `person` entity for Family Member 2's presence. | `person.wife` |
+| **Person 3 Notify** | The notification service for Family Member 3. | `notify.mobile_app_childs_iphone` |
+| **Person 3 Tracker** | The `person` entity for Family Member 3's presence. | `person.child` |
 
 ---
 
-## 📝 Usage (Automation)
+## 📝 Usage (Runtime Fields)
 
-When calling this script in an automation, you can use the following fields:
+When calling this script in an automation, you can use the following fields.
 
-### 🔹 Required Fields
-* **Title:** The notification header.
-* **Message:** The body text.
-* **Who to Notify:** A dropdown selection to determine targets.
-    * `All`
-    * `Person 1`
-    * `Person 2`
-    * `Person 3`
-    * `Person 1/Person 2`
-    * `Person 1/Person 3`
-    * `Person 2/Person 3`
+| Field | Description | Required |
+| :--- | :--- | :--- |
+| **`title`** | The notification header text. | ✅ Yes |
+| **`message`** | The notification body text. | ✅ Yes |
+| **`who_to_notify`** | Dropdown to select the target users for this message. | ✅ Yes |
+| **`image_path`** | (Optional) URL or path to an image to attach. | ❌ No |
+| **`tag`** | (Optional) A unique ID to update existing notifications. | ❌ No |
 
-### 🔹 Optional Fields
-* **Image Path:** Attaches a rich image to the notification.
-    * *Note:* Use `/local/filename.jpg` for images stored in your `www` folder.
-* **Notification Tag:** A unique string ID.
-    * *Feature:* If you send a new notification with the *same* tag, it replaces the old one on the phone screen (great for updating camera snapshots so you don't get a stack of 10 old images).
+**`who_to_notify` Options:** `All`, `Person 1`, `Person 2`, `Person 3`, `Person 1/Person 2`, `Person 1/Person 3`, `Person 2/Person 3`.
 
 ---
 
 ## 💡 YAML Examples
 
-### Example 1: The "Everyone" Announcement
-Useful for generic home events (e.g., "Washer is done"). Person 1 gets it anywhere; Persons 2 & 3 only get it if they are home.
+### Example 1: Generic Announcement
+This sends a message to "All". Person 1 gets it anywhere; Persons 2 & 3 only get it if they are home.
 
 ```yaml
-action: script.phone_notification_manager
-data:
-  title: "Laundry Room"
-  message: "The Washing Machine has finished."
-  who_to_notify: "All"
+action:
+  - service: script.phone_notification_manager
+    data:
+      title: "Laundry Room"
+      message: "The Washing Machine has finished."
+      who_to_notify: "All"
 ```
-Example 2: Security Alert (With Image)
 
-Sends a high-priority alert with a camera snapshot.
-```YAML
-action: script.phone_notification_manager
-data:
-  title: "⚠️ Motion Detected"
-  message: "Movement detected in the backyard."
-  who_to_notify: "Person 1/Person 2"
-  image_path: "/local/snapshots/backyard_latest.jpg"
-  tag: "backyard-motion"
+### Example 2: Security Alert with Image
+This sends a high-priority alert to Persons 1 and 2 with a camera snapshot, and uses a `tag` to ensure it can be updated.
+```yaml
+action:
+  - service: script.phone_notification_manager
+    data:
+      title: "⚠️ Motion Detected"
+      message: "Movement detected in the backyard."
+      who_to_notify: "Person 1/Person 2"
+      image_path: "/local/snapshots/backyard_latest.jpg"
+      tag: "backyard-motion"
 ```
-⚠️ Requirements<br>
 
-External Image Access If you attach an image using image_path, your Home Assistant instance must be accessible externally (via Nabu Casa or distinct URL) for the image to load on a phone that is not on your WiFi.
-
-If you use local paths (e.g., /local/img.jpg), ensure your mobile app is configured correctly to resolve internal URLs.
+> [!NOTE]
+> **External Image Access:** For images to load on phones off your local WiFi, your Home Assistant instance must be accessible externally (e.g., via Nabu Casa) and your app must be configured to resolve local URLs. Images should typically be placed in the `/config/www` directory, which is accessed via `/local/` in the URL.

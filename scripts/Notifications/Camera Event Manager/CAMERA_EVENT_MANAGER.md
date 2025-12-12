@@ -1,194 +1,102 @@
-# Camera Event Manager Blueprint
+# 👁️ Camera Event Manager (Script Blueprint)
 
-## Description
+![Type](https://img.shields.io/badge/Type-Script%20Blueprint-blue?style=flat-square)
+![Integration](https://img.shields.io/badge/Integration-AI%20Task%2C%20LLM%20Vision-blueviolet?style=flat-square)
+![Logic](https://img.shields.io/badge/Logic-Multi--Channel%20Notifications-success?style=flat-square)
 
-**Unified Camera Handler** for Home Assistant that manages snapshots, AI analysis, and multiple notification channels. It enables customizable behavior based on camera events, including popup notifications, mobile alerts, audio announcements, and integration with Apple TV. It also stores event details in LLM Memory for future reference.
-
-### Workflow:
-1. Takes snapshots to `/media/llmvision/snapshots/` and `/config/www/images/llmvision/`.
-2. Sends a "Analyzing..." notification.
-3. Generates an AI description of the image.
-4. Distributes the result via Popup, Phone, Audio, or Apple TV.
-5. Saves the event to LLM Memory for future reference.
-
-## ⚠️ CRITICAL SETUP REQUIRED
-
-- **File Paths:** 
-  This blueprint forces snapshots to be stored in the specified paths. Ensure these directories exist and are accessible in your `configuration.yaml`.
-
-- **Required Directories:**
-  You **MUST** ensure the following folders exist and are allowed in the configuration:
-
-  ```yaml
-  homeassistant:
-    allowlist_external_dirs:
-      - "/config/www/images/llmvision"
-      - "/media/llmvision/snapshots"
-
-  ```
-After adding this, restart Home Assistant.
-
-2. Required Helper Scripts
-
-This blueprint does not handle notifications directly; it acts as a "General" delegating tasks to "Soldiers." 
-<br>
-You must have the following scripts installed (via the other blueprints in this repo) and ready to select during import:
-
-| Script          | Role                     | Recommended Blueprint     | Why?                                                        |
-|-----------------|---------------------------|----------------------------|-------------------------------------------------------------|
-| Phone Notify    | Phone Notification Manager | Handles smart routing      | Handles smart routing (Who to notify & when).              |
-| Tablet Popup    | Tablet Popup               | Tablet Popup               | Forces the camera feed onto wall-mounted dashboards.       |
-| Audio Announce  | Make Announcement          | Audio Announcement         | Handles TTS with volume ducking and restoration.           |
-| Apple TV Notify | Apple TV Notify            | Apple TV Notify            | Sends alerts to Apple TVs only if they are active.         |
+**The core engine of the vision system.** This blueprint is a centralized script for handling all camera-related events. It manages taking snapshots, triggering AI analysis, and distributing rich notifications to multiple targets including phones, tablets, speakers, and Apple TVs.
 
 ---
 
-## 🔄 Workflow Overview
+## ⚠️ Critical Setup & Dependencies
 
-When triggered (such as by a motion sensor or doorbell), the automation executes the following sequence:
+> [!WARNING]
+> **Hardcoded Audio Group:** The "Enable Audio Announcement" feature is hardcoded to target a specific entity: `media_player.alert_notifications_group`. You **MUST** create a [Media Player Group](https://www.home-assistant.io/integrations/group/) with this exact name, containing the speakers you want for announcements, otherwise the TTS step will fail.
 
-### 📸 1. Dual Snapshot  
-Captures high-resolution images to:
-- **`/media/`** → archived storage  
-- **`/www/`** → instantly accessible from mobile devices  
+> [!IMPORTANT]
+> **Allowed Directories:** This blueprint saves snapshots to two specific locations. You **MUST** add these paths to your `configuration.yaml` file and restart Home Assistant.
+> ```yaml
+> homeassistant:
+>   allowlist_external_dirs:
+>     - "/config/www/images/llmvision"
+>     - "/media/llmvision/snapshots"
+> ```
 
+### Required Helper Scripts
+This blueprint acts as a manager that delegates tasks to other, more specialized "worker" scripts. You must have the other blueprints from this repository installed and configured first.
 
-
-### 📲 2. Instant Alert  
-Sends an immediate notification:  
-**“Motion Detected… Analyzing…”**  
-This ensures you know something is happening *before* AI finishes processing.
-
-
-
-### 🧠 3. AI Analysis  
-The captured image is processed through your AI provider (e.g., **Gemini**, **Ollama**) using your custom prompt.
-
-
-
-### 📝 4. Notification Update  
-Once the AI returns a summary (e.g., *“A delivery driver left a package”*),  
-the phone notification is **updated in-place** with the final result.
-
-
-
-### 📺 5. Multi-Channel Distribution
-
-- **📱 Tablets:** Forces a popup showing the live camera feed  
-- **🔊 Speakers:** Announces the AI summary via TTS  
-- **📺 Apple TVs:** Displays the summary directly on screen  
-
-
-
-### 💾 6. Memory Storage  
-The event is saved into the **LLM Vision Memory Database**, enabling long-term context and future automations to reference it.
+| Script Type | Role | Recommended Blueprint |
+| :--- | :--- | :--- |
+| **Phone Notification** | Sends mobile alerts with smart routing (who to notify). | `family_notification_manager.yaml` |
+| **Tablet Popup** | Forces a live camera feed onto wall-mounted dashboards. | `browsermod_popups_for_cameras.yaml` |
+| **Audio Announcement** | Handles TTS with volume ducking and state restoration. | `notify_media_players.yaml` |
+| **Apple TV Notify** | Sends alerts to Apple TVs only if they are active. | `notify_apple_tvs.yaml` |
 
 ---
 
-## ⚙️ Configuration (One-Time Setup)
+## ⚙️ Configuration (Blueprint Inputs)
 
-When importing the blueprint, you will be asked to map your environment.
+When importing this blueprint, you must link your helper scripts and define your environment.
 
----
-
-### 🔗 Link Your Scripts
-You will see inputs such as **Script: Phone Notification Manager**.  
-Use the entity picker to select the specific scripts you created earlier.
-
----
-
-### 🤖 AI Model
-Select the `ai_task` entity you want to use  
-(e.g., `ai_task.gemini_flash`).
+| Input | Description | Example |
+| :--- | :--- | :--- |
+| **Script: Phone...** | Select the corresponding worker script you created. | `script.phone_notification_manager` |
+| **Script: Tablet...** | Select the corresponding worker script you created. | `script.tablet_popup` |
+| **Script: Audio...** | Select the corresponding worker script you created. | `script.make_announcement` |
+| **Script: Apple TV...**| Select the corresponding worker script you created. | `script.apple_tv_notify` |
+| **Default AI Model** | The `ai_task` entity to use for generating descriptions. | `ai_task.gemini_flash` |
+| **Base URL** | Public-facing URL for accessing snapshot images on mobile. | `https://my-ha.ui.nabu.casa/local/images/llmvision`|
 
 ---
 
-### 🌐 Base URL
-The blueprint needs a URL that your phone can access from outside your home.  
-This is used to generate links to snapshot images.
+## 📝 Usage (Runtime Fields)
 
-**Format:**
-https://<YOUR_EXTERNAL_URL>/local/images/llmvision
-<br>
-DO NOT INCLUDE A TRAILING SLASH
+When you call this script from an automation, you can control its behavior using these fields.
 
----
-## 📝 Usage (Automation)
-
-Here is how to configure the automation trigger and fields when creating an automation from this blueprint.
-
----
-
-### 🔹 Core Fields
-
-- **Camera Entity**  
-  The camera to take snapshots from.
-
-- **Title / Event Name**  
-  Used for the notification header (e.g., `"Front Door"`).
-
-- **AI Instructions (Prompt)**  
-  Tells the AI what to look for.
-
-  **Default:**  
-  `"Describe the image in detail."`
-
-  **Examples:**  
-  - `"Is there a package visible?"`  
-  - `"Is it a person or a car?"`
+| Field | Description | Default |
+| :--- | :--- | :--- |
+| **`camera_entity`** | The camera to snapshot. | *(Required)* |
+| **`title_prefix`** | The title for notifications (e.g., "Front Door"). | *(Required)* |
+| **`prompt`** | The instruction for the AI model. | `"Describe the image..."` |
+| **`notification_tag`**| A unique ID to update mobile notifications in-place. | `""` |
+| **`who_to_notify`**| Who to send mobile alerts to (must match your Phone Manager).| `"Person 1"` |
+| **`enable_ai`** | Toggle AI analysis on/off for this run. | `true` |
+| **`ai_model`** | (Override) Use a different AI model for this specific event. | Blueprint Default |
+| **`enable_popup`** | Toggle tablet popups on/off. | `true` |
+| **`enable_notification`**| Toggle mobile notifications on/off. | `true` |
+| **`enable_tts`** | Toggle audio announcements on/off. | `false` |
+| **`enable_appletv`** | Toggle Apple TV notifications on/off. | `false` |
+| **`enable_memory`** | Toggle saving the event to LLM Vision Memory. | `true` |
+| **`tts_override`** | Speak this custom text instead of the AI summary. | `""` |
 
 ---
 
-### 🔹 Toggles (On/Off)
+## 💡 YAML Example
 
-Customize the behavior of each automation:
+This example shows how you might call this script from a doorbell automation.
 
-- **Enable AI Analysis** (Default: `true`)  
-- **Enable Tablet Popup**  
-- **Enable Phone Notification**  
-- **Enable Audio Announcement**  
-- **Enable Apple TV Notification**  
-- **Enable LLM Memory**
+```yaml
+# This action would be part of a larger automation
+action:
+  # Call the camera manager script
+  - service: script.camera_event_manager # This is the entity created from the blueprint
+    data:
+      # --- Required ---
+      camera_entity: camera.front_door
+      title_prefix: "Front Door"
+      
+      # --- AI & Notification ---
+      prompt: "A doorbell was rung. Describe who is at the door. Be concise."
+      notification_tag: "front-door-ring"
+      who_to_notify: "All"
 
----
-
-### 🔹 Advanced Overrides
-
-- **TTS Override Message**  
-  Provide a custom phrase for audio announcements  
-  (e.g., `"Ding dong"`).  
-  This replaces the AI-generated summary when announced via speakers.
-
-- **Notification Tag** *(Highly Recommended)*  
-  Enter a unique ID (e.g., `front_door_motion`).  
-  This ensures your phone **updates** an existing notification instead of spamming multiple alerts when the camera triggers repeatedly.
-
----
-
-💡 YAML Example
-Scenario: Front Doorbell Logic.
-
-Notify phones with AI description.
-
-Pop up on the kitchen tablet.
-
-Announce on speakers.
-
-```YAML
-alias: "Security - Front Doorbell Ring"
-description: ""
-use_blueprint:
-  path: your_name/camera_event_manager.yaml
-  input:
-    camera_entity: camera.front_door_high_res
-    title_prefix: "Front Door"
-    prompt: "A doorbell was rung. Describe who is at the door. Be concise."
-    notification_tag: "front-door-ring"
-    enable_tts: true
-    enable_popup: true
-    enable_appletv: true
-    # Note: Requires a group named 'media_player.alert_notifications_group' 
-    # for the audio announcement step, or edit the blueprint to match your setup.
+      # --- Enable Specific Actions ---
+      enable_popup: true
+      enable_tts: true
+      enable_appletv: true
+      
+      # --- Custom Message ---
+      tts_override: "Someone is at the front door."
 ```
 
 

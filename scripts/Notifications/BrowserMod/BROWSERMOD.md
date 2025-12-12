@@ -10,6 +10,13 @@ A specialized script that forces a live camera feed to pop up on specific wall-m
 > **Dependency: Browser Mod**
 > This blueprint requires the [Browser Mod](https://github.com/thomasloven/hass-browser_mod) integration (available via HACS). You must register your tablets as "Browsers" within that integration to obtain their `browser_id`.
 
+> [!TIP]
+> **How to Find Your `browser_id`**
+> 1. Open the Home Assistant Companion App or browser on the device you want to target.
+> 2. In the sidebar, go to **Settings** -> **Integrations & Services**.
+> 3. Find and click on the **Browser Mod** integration.
+> 4. Select the "Browsers" tab to see a list of all registered devices and their corresponding `browser_id`.
+
 ---
 
 ## ⚙️ Configuration
@@ -19,7 +26,7 @@ When importing the blueprint, you will configure the global settings for the pop
 
 | Input | Description | Default |
 | :--- | :--- | :--- |
-| **Target Browser IDs** | A YAML list of the Browser IDs (found in Browser Mod settings) that should display the popup. | *(Required)* |
+| **Target Browser IDs** | A YAML list of the Browser IDs that should display the popup. | *(Required)* |
 | **Popup Timeout** | How long (in milliseconds) the popup remains open before auto-closing. | `11000` (11s) |
 
 **Format for Browser IDs:**
@@ -29,29 +36,33 @@ Because this uses the `object` selector, ensure you enter the IDs as a list:
 - 99281-tablet-hallway
 ```
 
-2. Runtime Fields (Automation)
-
+### 2. Runtime Fields (Automation)
 When calling this script in an automation, you must provide the context for the specific event.
 
-Title Text: The header displayed on the popup (e.g., "Driveway Motion").
+| Field | Description | Required |
+| :--- | :--- | :--- |
+| **Title Text** | The header displayed on the popup (e.g., "Driveway Motion"). | ✅ Yes |
+| **Camera Entity** | The specific `camera` entity you want to stream. | ✅ Yes |
 
-Camera Entity: The specific camera. entity you want to stream.
+---
 
-📝 Usage Example
+## 📝 Usage Example
 Here is a standard automation example: "When the doorbell is pressed, show the camera on the kitchen tablet."
 
-```YAML
+```yaml
 trigger:
   - platform: state
     entity_id: binary_sensor.front_doorbell_ring
     to: "on"
 action:
-  - action: script.tablet_popup
+  - service: script.tablet_popup # Note: can also be 'action: script.tablet_popup'
     data:
       title_text: "Front Door - Ringing!"
       camera_entity: camera.front_door_high_res
 ```
-🔎 Technical Details
-Card Type: Uses a standard picture-glance card inside the popup for minimal latency.
 
-Auto-Close: The popup is configured to allow the user to close it manually (dismissable: true), but will also close automatically after the configured timeout.
+---
+
+## 🔎 Technical Details
+- **Card Type:** Uses a standard `picture-glance` card inside the popup for minimal latency.
+- **Auto-Close:** The popup is configured to allow the user to close it manually (`dismissable: true`), but will also close automatically after the configured timeout.
