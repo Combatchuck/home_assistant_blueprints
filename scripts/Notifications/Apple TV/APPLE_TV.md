@@ -15,7 +15,7 @@ Standard notification scripts often blindly send audio to all devices. If an App
 | :--- | :--- |
 | **▶️ Playing** | ✅ **Announcement plays** (Audio ducks automatically) |
 | **⏸️ Paused** | ✅ **Announcement plays** |
-| **🟢 On / Buffering** | ✅ **Announcement plays** |
+| **🟢 On / Idle / Buffering** | ✅ **Announcement plays** |
 | **⚫ Off / Standby** | 🔇 **Skipped** (TV remains off) |
 
 ---
@@ -45,11 +45,12 @@ data:
   message: "The washing machine has finished."
   target_override:
     - media_player.living_room_apple_tv
+```
 
+> [!IMPORTANT]
+> **TTS Provider Configuration**
+> This blueprint is hardcoded to use the `google_translate` TTS service. If you use a different provider (e.g., `tts.cloud_say`, Piper), you must manually edit the `media_content_id` line in the blueprint's YAML file to match your provider.
 
-⚠️ Requirements & Notes
-TTS Provider: This blueprint is currently hardcoded to use Google Translate TTS (media-source://tts/google_translate).
-
-If you use Nabu Casa Cloud or Piper: You will need to edit the media_content_id line in the blueprint YAML to match your preferred TTS engine.
-
-Entity Type: Ensure your targets are media_player entities provided by the official Apple TV integration.
+> [!NOTE]
+> **Entity Requirements**
+> The `target_override` and `default_apple_tvs` inputs must be `media_player` entities created by the official Home Assistant Apple TV integration.
