@@ -10,7 +10,21 @@ This blueprint is the starting point for all camera-based AI analysis. It's desi
 
 ## 🔗 Dependencies
 
-This blueprint **triggers** the core script but does not contain the notification logic itself. You **MUST** have the [Camera Event Manager](../Camera%20Event%20Manager/CAMERA_EVENT_MANAGER.md) script blueprint installed and configured first.
+This automation acts as a trigger for the main `Camera Event Manager` script. A fully functional setup requires several interconnected blueprints.
+
+### Primary Dependency
+- **[Camera Event Manager](../../scripts/Notifications/Camera%20Event%20Manager/CAMERA_EVENT_MANAGER.md):** This automation's main purpose is to call the script created from this blueprint. You **MUST** have this installed and configured.
+
+### Sub-Dependencies (Required by Camera Event Manager)
+The `Camera Event Manager` relies on the following "worker" scripts to handle notifications. You will need to have these installed and configured as well:
+
+| Script Blueprint | Role |
+| :--- | :--- |
+| **`family_notification_manager.yaml`** | Sends mobile alerts with smart routing. |
+| **`browsermod_popups_for_cameras.yaml`** | Forces a live camera feed onto dashboards. |
+| **`notify_media_players.yaml`** | Handles general audio announcements. |
+| **`notify_apple_tvs.yaml`** | Sends alerts specifically to Apple TVs. |
+
 
 ---
 
