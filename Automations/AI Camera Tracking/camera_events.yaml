@@ -1,0 +1,147 @@
+blueprint:
+  name: Camera Event - AI, LLM Vision, notifications, alerts
+  description: >
+    Triggers the AI Camera Event Manager script based on a sensor or doorbell press.
+    Features:
+    - Supports Motion Sensors, Doorbells, or "Person Detected" binary sensors.
+    - Includes a "Pre-Action" block (perfect for turning on porch lights or ringing chimes *before* the snapshot).
+    - Includes a "Cooldown" to prevent spamming the AI.
+  domain: automation
+  input:
+    # --- Trigger Configuration ---
+    trigger_entity:
+      name: Trigger Entity
+      description: The binary sensor that starts the event (e.g., binary_sensor.front_doorbell, binary_sensor.driveway_motion).
+      selector:
+        entity:
+          domain: binary_sensor
+    trigger_duration:
+      name: Trigger Duration
+      description: How long the sensor must be 'on' before triggering (prevents false positives).
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 60
+          unit_of_measurement: seconds
+    cooldown:
+      name: Cooldown Time
+      description: Time to wait before allowing this automation to run again.
+      default: 30
+      selector:
+        number:
+          min: 0
+          max: 300
+          unit_of_measurement: seconds
+
+    # --- Script Configuration ---
+    manager_script:
+      name: Camera Event Manager Script
+      description: Select the 'script.camera_event_manager' you created previously.
+      selector:
+        entity:
+          domain: script
+
+    # --- AI & Notification Settings ---
+    camera_entity:
+      name: Camera Entity
+      selector:
+        entity:
+          domain: camera
+    title_prefix:
+      name: Event Title
+      description: e.g., "Front Door" or "Driveway"
+      selector:
+        text:
+    prompt:
+      name: AI Instructions
+      default: Describe the image in detail. (Under 160 characters).
+      selector:
+        text:
+          multiline: true
+    who_to_notify:
+      name: Who to Notify
+      description: Must match options in your Notification Manager (e.g., Person 1, All).
+      default: Person 1
+      selector:
+        text:
+    notification_tag:
+      name: Notification Tag
+      description: (Optional) Tag to overwrite previous notifications for this camera.
+      selector:
+        text:
+
+    # --- Toggle Features ---
+    enable_ai:
+      name: Enable AI?
+      default: true
+      selector:
+        boolean:
+    enable_popup:
+      name: Enable Tablet Popup?
+      default: true
+      selector:
+        boolean:
+    enable_notification:
+      name: Enable Phone Notification?
+      default: true
+      selector:
+        boolean:
+    enable_tts:
+      name: Enable Audio Announcement?
+      default: false
+      selector:
+        boolean:
+    enable_appletv:
+      name: Enable Apple TV Notification?
+      default: false
+      selector:
+        boolean:
+    tts_override:
+      name: TTS Override
+      description: (Optional) Hardcode the spoken text (e.g., "Someone is at the door") instead of reading the AI summary.
+      selector:
+        text:
+
+    # --- Custom Actions ---
+    pre_actions:
+      name: Pre-Analysis Actions
+      description: Actions to run IMMEDIATELY when triggered (e.g., Turn on floodlights, Ring Doorbell Chime).
+      default: []
+      selector:
+        action: {}
+
+mode: single
+max_exceeded: silent
+
+trigger:
+  - platform: state
+    entity_id: !input trigger_entity
+    to: "on"
+    for:
+      seconds: !input trigger_duration
+
+condition: []
+
+action:
+  # 1. Run Pre-Actions (Lights, Chimes, etc.)
+  - choose: []
+    default: !input pre_actions
+
+  # 2. Call the Manager Script
+  - action: !input manager_script
+    data:
+      camera_entity: !input camera_entity
+      title_prefix: !input title_prefix
+      prompt: !input prompt
+      who_to_notify: !input who_to_notify
+      notification_tag: !input notification_tag
+      enable_ai: !input enable_ai
+      enable_popup: !input enable_popup
+      enable_notification: !input enable_notification
+      enable_tts: !input enable_tts
+      enable_appletv: !input enable_appletv
+      tts_override: !input tts_override
+
+  # 3. Cooldown delay
+  - delay: !input cooldown
