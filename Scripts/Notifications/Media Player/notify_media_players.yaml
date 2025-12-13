@@ -1,5 +1,5 @@
 blueprint:
-  name: Make Announcement
+  name: System - Make Announcement
   description: >
     Handles the "Snapshot > Volume > Speak > Restore" logic for announcements.
     
