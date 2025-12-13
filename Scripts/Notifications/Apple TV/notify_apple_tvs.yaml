@@ -1,5 +1,5 @@
 blueprint:
-  name: Apple TV Notify
+  name: System - Notify Apple TVs
   description: >
     Sends a TTS notification to Apple TVs.
     
