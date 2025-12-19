@@ -1,0 +1,40 @@
+blueprint:
+  name: Leak Sensor Alert Manager
+  description: Automatically detects ANY moisture sensor that turns on and sends a notification with the names of the wet sensors.
+  domain: automation
+  input:
+    notify_service:
+      name: Notification Service
+      description: The service used to send the alert (e.g., notify.mobile_app_your_phone).
+      selector:
+        text:
+    notification_title:
+      name: Notification Title
+      description: The title of the alert message.
+      default: "💦 Leak Detected!"
+
+mode: single
+
+trigger:
+  - trigger: template
+    value_template: |
+      {{ states.binary_sensor
+          | selectattr('attributes.device_class', 'defined')
+          | selectattr('attributes.device_class', 'eq', 'moisture')
+          | selectattr('state', 'eq', 'on')
+          | list | count > 0 }}
+
+action:
+  - variables:
+      wet_sensors: |
+        {{ states.binary_sensor
+            | selectattr('attributes.device_class', 'defined')
+            | selectattr('attributes.device_class', 'eq', 'moisture')
+            | selectattr('state', 'eq', 'on')
+            | map(attribute='name')
+            | join(', ') }}
+
+  - service: !input notify_service
+    data:
+      title: !input notification_title
+      message: "The following sensors are reporting moisture: {{ wet_sensors }}"

@@ -1,0 +1,71 @@
+blueprint:
+  name: Low Battery Alert Manager
+  description: Periodically checks all battery sensors and sends a single notification listing any that are below a specified threshold.
+  domain: automation
+  input:
+    notify_service:
+      name: Notification Service
+      description: The service to call for sending the alert (e.g., notify.mobile_app_your_phone).
+      selector:
+        text: {}
+    threshold:
+      name: Low Battery Threshold
+      description: The battery percentage below which an alert should be triggered.
+      default: 20
+      selector:
+        number:
+          min: 1
+          max: 100
+          unit_of_measurement: "%"
+    check_interval:
+      name: Check Interval (Hours)
+      description: How often to check for low batteries.
+      default: 4
+      selector:
+        number:
+          min: 1
+          max: 24
+          step: 1
+    notification_title:
+      name: Notification Title
+      description: The title of the alert message.
+      default: "🔋 Low Battery Alert"
+
+mode: single
+
+trigger:
+  - platform: time_pattern
+    hours: "/{{ !input check_interval|int }}"
+
+action:
+  - variables:
+      threshold: !input threshold
+      # This template iterates through all sensors, finds the ones with 'battery' device class,
+      # and creates a list of those that are below the specified threshold.
+      low_sensors: >
+        {% set low_battery_sensors = [] %}
+        {% for s in states.sensor %}
+          {% if 
+            s.attributes.device_class == 'battery' and
+            s.state is not none and
+            s.state != 'unknown' and
+            s.state != 'unavailable' and
+            s.state | is_number and
+            s.state | int < threshold
+          %}
+            {% set _ = low_battery_sensors.append(s) %}
+          {% endif %}
+        {% endfor %}
+        {{ low_battery_sensors }}
+
+  - condition: template
+    value_template: "{{ low_sensors | count > 0 }}"
+    
+  - service: !input notify_service
+    data:
+      title: !input notification_title
+      message: >-
+        The following devices need their batteries changed:
+        {% for sensor in low_sensors %}
+        - {{ sensor.name }}: {{ sensor.state }}%
+        {% endfor %}
